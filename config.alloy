@@ -1,0 +1,40 @@
+local.file_match "game_logs" {
+  path_targets = [{"__path__" = "/app/logs/game.log"}]
+}
+
+loki.source.file "local" {
+  targets    = local.file_match.game_logs.targets
+  forward_to = [loki.process.parse.receiver]
+}
+
+loki.process "parse" {
+  forward_to = [loki.write.local.receiver]
+
+  stage.static_labels {
+    values = {
+      service_name = "dot game",
+    }
+  }
+
+  stage.json {
+    expressions = {
+      event    = "event",
+      username = "username",
+      level    = "level",
+    }
+  }
+
+  stage.labels {
+    values = {
+      event    = "event",
+      username = "username",
+      level    = "level",
+    }
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
